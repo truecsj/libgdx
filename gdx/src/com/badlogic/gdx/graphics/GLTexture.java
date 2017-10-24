@@ -17,9 +17,7 @@
 package com.badlogic.gdx.graphics;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Pixmap.Blending;
-import com.badlogic.gdx.graphics.Pixmap.Format;
 import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.badlogic.gdx.graphics.Texture.TextureWrap;
 import com.badlogic.gdx.graphics.TextureData.TextureDataType;
@@ -179,24 +177,6 @@ public abstract class GLTexture implements Disposable {
 		delete();
 	}
 
-	/** @deprecated Use {@link TextureData.Factory#loadFromFile(FileHandle, Format, boolean)} instead. */
-	@Deprecated
-	protected static TextureData createTextureData (FileHandle file, Format format, boolean useMipMaps) {
-		return TextureData.Factory.loadFromFile(file, format, useMipMaps);
-	}
-
-	/** @deprecated Use {@link TextureData.Factory#loadFromFile(FileHandle, boolean)} instead. */
-	@Deprecated
-	protected static TextureData createTextureData (FileHandle file, boolean useMipMaps) {
-		return createTextureData(file, null, useMipMaps);
-	}
-
-	/** @deprecated Use {@link GL20#glGenTexture()} instead. */
-	@Deprecated
-	protected static int createGLHandle () {
-		return Gdx.gl.glGenTexture ();
-	}
-	
 	protected static void uploadImageData (int target, TextureData data) {
 		uploadImageData(target, data, 0);
 	}
@@ -219,10 +199,8 @@ public abstract class GLTexture implements Disposable {
 		boolean disposePixmap = data.disposePixmap();
 		if (data.getFormat() != pixmap.getFormat()) {
 			Pixmap tmp = new Pixmap(pixmap.getWidth(), pixmap.getHeight(), data.getFormat());
-			Blending blend = Pixmap.getBlending();
-			Pixmap.setBlending(Blending.None);
+			tmp.setBlending(Blending.None);
 			tmp.drawPixmap(pixmap, 0, 0, 0, 0, pixmap.getWidth(), pixmap.getHeight());
-			Pixmap.setBlending(blend);
 			if (data.disposePixmap()) {
 				pixmap.dispose();
 			}

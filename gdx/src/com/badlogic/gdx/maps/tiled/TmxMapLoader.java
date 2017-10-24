@@ -73,6 +73,7 @@ public class TmxMapLoader extends BaseTmxMapLoader<TmxMapLoader.Parameters> {
 	public TiledMap load (String fileName, TmxMapLoader.Parameters parameters) {
 		try {
 			this.convertObjectToTileSpace = parameters.convertObjectToTileSpace;
+			this.flipY = parameters.flipY;
 			FileHandle tmxFile = resolve(fileName);
 			root = xml.parse(tmxFile);
 			ObjectMap<String, Texture> textures = new ObjectMap<String, Texture>();
@@ -100,8 +101,10 @@ public class TmxMapLoader extends BaseTmxMapLoader<TmxMapLoader.Parameters> {
 
 		if (parameter != null) {
 			convertObjectToTileSpace = parameter.convertObjectToTileSpace;
+			flipY = parameter.flipY;
 		} else {
 			convertObjectToTileSpace = false;
+			flipY = true;
 		}
 		try {
 			map = loadTilemap(root, tmxFile, new AssetManagerImageResolver(manager));
@@ -157,6 +160,9 @@ public class TmxMapLoader extends BaseTmxMapLoader<TmxMapLoader.Parameters> {
 		int mapHeight = root.getIntAttribute("height", 0);
 		int tileWidth = root.getIntAttribute("tilewidth", 0);
 		int tileHeight = root.getIntAttribute("tileheight", 0);
+		int hexSideLength = root.getIntAttribute("hexsidelength", 0);
+		String staggerAxis = root.getAttribute("staggeraxis", null);
+		String staggerIndex = root.getAttribute("staggerindex", null);
 		String mapBackgroundColor = root.getAttribute("backgroundcolor", null);
 
 		MapProperties mapProperties = map.getProperties();
@@ -167,6 +173,13 @@ public class TmxMapLoader extends BaseTmxMapLoader<TmxMapLoader.Parameters> {
 		mapProperties.put("height", mapHeight);
 		mapProperties.put("tilewidth", tileWidth);
 		mapProperties.put("tileheight", tileHeight);
+		mapProperties.put("hexsidelength", hexSideLength);
+		if (staggerAxis != null) {
+			mapProperties.put("staggeraxis", staggerAxis);
+		}
+		if (staggerIndex != null) {
+			mapProperties.put("staggerindex", staggerIndex);
+		}
 		if (mapBackgroundColor != null) {
 			mapProperties.put("backgroundcolor", mapBackgroundColor);
 		}
@@ -195,15 +208,7 @@ public class TmxMapLoader extends BaseTmxMapLoader<TmxMapLoader.Parameters> {
 		}
 		for (int i = 0, j = root.getChildCount(); i < j; i++) {
 			Element element = root.getChild(i);
-			String name = element.getName();
-			if (name.equals("layer")) {
-				loadTileLayer(map, element);
-			} else if (name.equals("objectgroup")) {
-				loadObjectGroup(map, element);
-			}
-			else if (name.equals("imagelayer")) {
-				loadImageLayer(map, element, tmxFile, imageResolver);
-			}
+			loadLayer(map, map.getLayers(), element, tmxFile, imageResolver);
 		}
 		return map;
 	}
@@ -379,7 +384,7 @@ public class TmxMapLoader extends BaseTmxMapLoader<TmxMapLoader.Parameters> {
 						TiledMapTile tile = new StaticTiledMapTile(tileRegion);
 						tile.setId(id);
 						tile.setOffsetX(offsetX);
-						tile.setOffsetY(-offsetY);
+						tile.setOffsetY(flipY ? -offsetY : offsetY);
 						tileset.putTile(id++, tile);
 					}
 				}
@@ -391,13 +396,18 @@ public class TmxMapLoader extends BaseTmxMapLoader<TmxMapLoader.Parameters> {
 						imageSource = imageElement.getAttribute("source");
 						imageWidth = imageElement.getIntAttribute("width", 0);
 						imageHeight = imageElement.getIntAttribute("height", 0);
-						image = getRelativeFileHandle(tmxFile, imageSource);
+
+						if (source != null) {
+							image = getRelativeFileHandle(getRelativeFileHandle(tmxFile, source), imageSource);
+						} else {
+							image = getRelativeFileHandle(tmxFile, imageSource);
+						}
 					}
 					TextureRegion texture = imageResolver.getImage(image.path());
 					TiledMapTile tile = new StaticTiledMapTile(texture);
 					tile.setId(firstgid + tileElement.getIntAttribute("id"));
 					tile.setOffsetX(offsetX);
-					tile.setOffsetY(-offsetY);
+					tile.setOffsetY(flipY ? -offsetY : offsetY);
 					tileset.putTile(tile.getId(), tile);
 				}
 			}
@@ -423,6 +433,14 @@ public class TmxMapLoader extends BaseTmxMapLoader<TmxMapLoader.Parameters> {
 						animatedTile.setId(tile.getId());
 						animatedTiles.add(animatedTile);
 						tile = animatedTile;
+					}
+
+					Element objectgroupElement = tileElement.getChildByName("objectgroup");
+					if (objectgroupElement != null) {
+
+						for (Element objectElement: objectgroupElement.getChildrenByName("object")) {
+							loadObject(map, tile, objectElement);
+						}
 					}
 
 					String terrain = tileElement.getAttribute("terrain", null);

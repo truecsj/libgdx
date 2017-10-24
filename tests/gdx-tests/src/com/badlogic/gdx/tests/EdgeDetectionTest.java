@@ -67,10 +67,10 @@ public class EdgeDetectionTest extends GdxTest {
 		}
 
 		ObjLoader objLoader = new ObjLoader();
-		scene = objLoader.loadObj(Gdx.files.internal("data/scene.obj"));
+		scene = objLoader.loadModel(Gdx.files.internal("data/scene.obj"));
 		sceneInstance = new ModelInstance(scene);
 		modelBatch = new ModelBatch();
-		fbo = new FrameBuffer(Format.RGB565, Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
+		fbo = FrameBuffer.createFrameBuffer(Format.RGB565, Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
 		cam = new PerspectiveCamera(67, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 		cam.position.set(0, 0, 10);
 		cam.lookAt(0, 0, 0);

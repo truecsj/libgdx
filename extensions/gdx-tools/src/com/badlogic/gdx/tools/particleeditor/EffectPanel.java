@@ -55,13 +55,13 @@ class EffectPanel extends JPanel {
 		emitter.getDuration().setLow(1000);
 		emitter.getEmission().setHigh(50);
 		emitter.getLife().setHigh(500);
-		emitter.getScale().setHigh(32, 32);
+		emitter.getXScale().setHigh(32, 32);
 
 		emitter.getTint().setColors(new float[] {1, 0.12156863f, 0.047058824f});
 		emitter.getTransparency().setHigh(1);
 
 		emitter.setMaxParticleCount(25);
-		emitter.setImagePath(ParticleEditor.DEFAULT_PARTICLE);
+		emitter.setImagePaths(new Array<String>(new String[] { ParticleEditor.DEFAULT_PARTICLE }));
 
 		addEmitter(name, select, emitter);
 		return emitter;
@@ -78,7 +78,7 @@ class EffectPanel extends JPanel {
 		emitter.getLife().setTimeline(new float[] {0, 0.66f, 1});
 		emitter.getLife().setScaling(new float[] {1, 1, 0.3f});
 
-		emitter.getScale().setHigh(32, 32);
+		emitter.getXScale().setHigh(32, 32);
 
 		emitter.getRotation().setLow(1, 360);
 		emitter.getRotation().setHigh(180, 180);
@@ -102,7 +102,7 @@ class EffectPanel extends JPanel {
 		emitter.getTransparency().setScaling(new float[] {0, 1, 0.75f, 0});
 
 		emitter.setMaxParticleCount(200);
-		emitter.setImagePath(ParticleEditor.DEFAULT_PARTICLE);
+		emitter.setImagePaths(new Array<String>(new String[] { ParticleEditor.DEFAULT_PARTICLE }));
 
 		addEmitter(name, select, emitter);
 		return emitter;
@@ -137,7 +137,7 @@ class EffectPanel extends JPanel {
 		editor.reloadRows();
 	}
 
-	void openEffect () {
+	void openEffect (boolean mergeIntoCurrent) {
 		FileDialog dialog = new FileDialog(editor, "Open Effect", FileDialog.LOAD);
 		if (lastDir != null) dialog.setDirectory(lastDir);
 		dialog.setVisible(true);
@@ -149,8 +149,14 @@ class EffectPanel extends JPanel {
 		try {
 			File effectFile = new File(dir, file);
 			effect.loadEmitters(Gdx.files.absolute(effectFile.getAbsolutePath()));
-			editor.effect = effect;
-			editor.effectFile = effectFile;
+			if (mergeIntoCurrent){
+				for (ParticleEmitter emitter : effect.getEmitters()){
+					addEmitter(emitter.getName(), false, emitter);
+				}
+			} else {
+				editor.effect = effect;
+				editor.effectFile = effectFile;
+			}
 			emitterTableModel.getDataVector().removeAllElements();
 			editor.particleData.clear();
 		} catch (Exception ex) {
@@ -159,7 +165,7 @@ class EffectPanel extends JPanel {
 			JOptionPane.showMessageDialog(editor, "Error opening effect.");
 			return;
 		}
-		for (ParticleEmitter emitter : effect.getEmitters()) {
+		for (ParticleEmitter emitter : editor.effect.getEmitters()) {
 			emitter.setPosition(editor.worldCamera.viewportWidth / 2, editor.worldCamera.viewportHeight / 2);
 			emitterTableModel.addRow(new Object[] {emitter.getName(), true});
 		}
@@ -183,11 +189,14 @@ class EffectPanel extends JPanel {
 		URI effectDirUri = effectFile.getParentFile().toURI();
 		for (ParticleEmitter emitter : editor.effect.getEmitters()) {
 			emitter.setName((String)emitterTableModel.getValueAt(index++, 0));
-			String imagePath = emitter.getImagePath();
-			if ((imagePath.contains("/") || imagePath.contains("\\")) && !imagePath.contains("..")) {
-				// it's absolute, make it relative:
-				URI imageUri = new File(emitter.getImagePath()).toURI();
-				emitter.setImagePath(effectDirUri.relativize(imageUri).getPath());
+			Array<String> imagePaths = emitter.getImagePaths();
+			for (int i = 0; i < imagePaths.size; i++) {
+				String imagePath = imagePaths.get(i);
+				if ((imagePath.contains("/") || imagePath.contains("\\")) && !imagePath.contains("..")) {
+					// it's absolute, make it relative:
+					URI imageUri = new File(imagePath).toURI();
+					imagePaths.set(i, effectDirUri.relativize(imageUri).getPath());
+				}
 			}
 		}
 
@@ -303,7 +312,17 @@ class EffectPanel extends JPanel {
 					GridBagConstraints.HORIZONTAL, new Insets(0, 0, 6, 0), 0, 0));
 				openButton.addActionListener(new ActionListener() {
 					public void actionPerformed (ActionEvent event) {
-						openEffect();
+						openEffect(false);
+					}
+				});
+			}
+			{
+				JButton mergeButton = new JButton("Merge");
+				sideButtons.add(mergeButton, new GridBagConstraints(0, -1, 1, 1, 0, 0, GridBagConstraints.CENTER,
+					GridBagConstraints.HORIZONTAL, new Insets(0, 0, 6, 0), 0, 0));
+				mergeButton.addActionListener(new ActionListener() {
+					public void actionPerformed (ActionEvent event) {
+						openEffect(true);
 					}
 				});
 			}
